@@ -1,12 +1,18 @@
 const net = require('net');
 
+let return_message = {
+    "message": "hi",
+};
+
 const server = net.createServer(conn => {
     console.log("New client");
 
     conn.on('data', data => {
         console.log("Data recieved: ", data.toString());
 
-        conn.write("I hear you");
+        conn.write(JSON.stringify(return_message) + "\n");
+
+        console.log("Sending back: ", JSON.stringify(return_message) + "\n");
 
     });
 
