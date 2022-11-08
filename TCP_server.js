@@ -12,7 +12,7 @@ let clients = {};
 
 let id = 0;
 
-class Connection {
+class Client {
     constructor(conn, id) {
 
         this.conn = conn
@@ -61,7 +61,7 @@ const server = net.createServer(conn => {
         "id": id,
     }) + "\n")
 
-    let c = new Connection(conn, id)
+    let c = new Client(conn, id)
 
     clients[String(id)] = c;
 
