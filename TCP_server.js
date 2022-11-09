@@ -1,3 +1,45 @@
+// PLAN
+
+// CODE THE PROCESS THAT HAPPENS EVERY TIME A CLIENT CONNECTS
+    // Client connects
+    // Server sends back response {"status":"idUnknown"}
+    // Client sends a json object containing a client id and the user id of the user that owns it and its status
+    // Server checks if the id is known to the server
+        // If known
+        // Status of client will be {"status": "reconnecting"}
+        // The user id from the client is checked to see if it matches the user id known to own the client
+            // If correct
+            // Connection established server sends back {"status": "idConfirmed"}
+        // If not known
+        // In this case the user will have just know set up the device as the next step for the device will be to connect to the server
+        // Status of device will now be {"status":"initialConnection"}
+        // A new client will be added to the database and assigned the user id of the user that did the setup before the client started the initialConnection with the server
+        // Server sends back {"status": "initialConnectionComplete"}
+    // Client is added to the json object of currently connected clients and assigned a name corresponding to the client id
+
+// Set up database
+    // Table of devices known to the server
+    // Every device will be assigned a user id
+    // Table of users known to the server
+
+// Http route of frontend client asking for a users devices
+    // At this point the frontend will have handled the sign of the user and will be asking for the users devices
+    // All devices assigned the user of the frontends id must be found and sent to the frontend
+
+// Set up http route to change a devices states
+    // Frontend will have received data about the devices connected to the user
+    // The user will be able to control the device
+    // As soon as the user changes the state of a device a message should be sent to the server
+    // The server stores the new state in the data and sends the new state to the device
+    // The state stored in the database asures that the data about the device can be read even when the device is offline
+
+// Device must be able to sent sensor data back to the server
+// Every bit of data sent between the server and the client must be assigned a function name like:
+    // {"function": "changeOfState"}, {"function": "dataRecieved"}, {"function": "sensorData"}
+    // This will tell each side why the bit of data was sent from the other side
+
+// When all this is done is believe we will have a stable backed foundation for any IOT project
+
 const net = require('net');
 const express = require('express');
 
