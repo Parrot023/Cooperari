@@ -42,39 +42,14 @@
 
 const net = require('net');
 const express = require('express');
+const tools = require('./tools');
 
 const frontendPort = 3000;
 const backendPort = 9000;
 
-let return_message = {
-    "message": "hi",
-};
-
 let clients = {};
 
 let id = 0;
-
-function Client(conn, id) {
-
-    this.conn = conn
-    this.id = id;
-
-    this.conn.on('data', data => {
-        
-        console.log("Data recieved from client " + this.id + ": ", data.toString());
-
-        this.conn.write(JSON.stringify(return_message) + "\n");
-
-        console.log("Sending back: ", JSON.stringify(return_message) + "\n");
-
-    });
-
-    this.conn.on('end', () => {
-
-        console.log("Client " + this.id + ": left");
-
-    })
-}
 
 const app = express()
 
@@ -100,7 +75,7 @@ const server = net.createServer(conn => {
         "id": id,
     }) + "\n")
 
-    let c = new Client(conn, id)
+    let c = new tools.Client(conn, id)
 
     clients[String(id)] = c;
 
