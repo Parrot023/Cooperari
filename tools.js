@@ -135,6 +135,35 @@ let updateTable = function (conn, table, where, data) {
     })
 }
 
+// Reads data from table based on conditions in the form ["col1", "hi"] (col1='hi')
+// Calls callback when query is done
+let readFromTable = function (conn, table, where, callback) {
+
+    let conditions = "";
+
+    
+    for (let i = 0; i < where.length; i ++) {
+
+        if (where[i]) conditions += where[i][0] + "=" + "'" + where[i][1] + "'";
+
+        // Add commas if not the last
+        if (i != where.length - 1) conditions += ",";
+
+    }
+
+    let sql = "SELECT * FROM " + table + " WHERE " + conditions + ";"
+
+    conn.query(sql, (err, result) => {
+        if (err) throw err;
+        // Calls callback when query is done
+        callback(result);
+    })
+}
+
+
+// Reads data from table based on conditions
+
+
 // Exports functions
 // Must be updated when the database handling is complete
 module.exports = {
