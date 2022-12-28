@@ -1,9 +1,11 @@
-
+const mysql = require('mysql2');
+require('dotenv').config();
 
 let return_message = {
     "message": "hi",
 };
 
+// Client object to handle the connection with the client
 function Client(conn, id) {
 
     this.conn = conn;
@@ -26,6 +28,115 @@ function Client(conn, id) {
     })
 }
 
+
+// Connects to the sql server
+let connectToSqlServer = function() {
+    let conn = mysql.createConnection({
+        host: process.env.SQL_HOST,
+        user: process.env.SQL_USER,
+        password: process.env.PASSWORD,
+    })
+
+    return conn;
+};
+
+// Uses the conn object to select the wanted database
+let setDB = function(db_name) {
+    conn.query('USE ' + db_name + ";", (err, result) => {
+        if (err) throw err;
+        console.log(result);
+    });
+}
+
+// Creates a table based on given data
+let createTable = function(conn, tableName, tableData) {
+
+    // Should check if the table already exists
+
+    let name = tableName;
+
+    let cols = "";
+
+    for (let i = 0; i < tableData.length; i++) {
+        let colName = tableData[i][0];
+        let colType = tableData[i][1];
+    
+        if (i == tableData.length - 1) cols += colName + " " + colType;
+        
+        else cols += colName + " " + colType + ", ";
+
+    }
+
+    let sql = "CREATE TABLE " + name + " (" + cols + ");";
+   
+    console.log(sql);
+
+    conn.query(sql, (err, result) => {
+        if (err) throw err;
+        return result;
+    })
+}
+
+// Inserts a new row of data into a table
+// Needs some error handling in terms of missing data or wrong data
+let insertInto = function(conn, table, data) {
+
+    let order = "";
+    let values = "";
+
+    for (let i = 0; i < data.length; i ++) {
+        
+        if (i == data.length - 1) order += data[i][0];
+        else order += data[i][0] + ", ";
+        
+        
+        if (i == data.length - 1) values += "'" + data[i][1] + "'";
+        else values += "'" + data[i][1] + "'" + ", ";
+
+    }
+
+    sql = "INSERT INTO " + table + " (" + order + ") VALUES (" + values + ");"
+
+    console.log(sql)
+
+    conn.query("INSERT INTO " + table + " (" + order + ") VALUES (" + values + ");", (err, result) => {
+        if (err) throw err;
+        return result
+    })
+}
+
+// Updatas data in a table based on som changes and conditions
+let updateTable = function (conn, table, where, data) {
+
+    let conditions = "";
+    let changes = "";
+
+    let iterations = data.length;
+
+    if (where.length > data.length) iterations = where.length;
+    
+    for (let i = 0; i < iterations; i ++) {
+
+        if (where[i]) conditions += where[i][0] + "=" + "'" + where[i][1] + "'";
+        if (data[i]) changes += data[i][0] + "=" + "'" + data[i][1] + "'"; 
+
+
+        // Add commas if not the last
+        if (i != data.length - 1) changes += ",";
+        if (i != where.length - 1) conditions += ",";
+
+    }
+
+    let sql = "UPDATE " + table + " SET " + changes + " WHERE " + conditions + ";"
+
+    conn.query(sql, (err, result) => {
+        if (err) throw err;
+        return result;
+    })
+}
+
+// Exports functions
+// Must be updated when the database handling is complete
 module.exports = {
-    Client: Client
+    Client: Client,
 }
