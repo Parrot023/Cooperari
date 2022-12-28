@@ -1,6 +1,9 @@
 const mysql = require('mysql2');
 require('dotenv').config();
 
+
+// CLIENT PART ----------------------------------------------------------
+
 let return_message = {
     "message": "hi",
 };
@@ -28,6 +31,7 @@ function Client(conn, id) {
     })
 }
 
+// DATABASE PART ---------------------------------------------------------
 
 // Connects to the sql server
 let connectToSqlServer = function() {
@@ -79,7 +83,7 @@ let createTable = function(conn, tableName, tableData) {
 
 // Inserts a new row of data into a table
 // Needs some error handling in terms of missing data or wrong data
-let insertInto = function(conn, table, data) {
+let insertIntoTable = function(conn, table, data) {
 
     let order = "";
     let values = "";
@@ -160,12 +164,13 @@ let readFromTable = function (conn, table, where, callback) {
     })
 }
 
-
-// Reads data from table based on conditions
-
-
-// Exports functions
-// Must be updated when the database handling is complete
+// Exports functions ----------------------------------------------------------
 module.exports = {
     Client: Client,
+    connectToSqlServer: connectToSqlServer,
+    setDB: setDB,
+    createTable: createTable,
+    insertIntoTable: insertIntoTable,
+    updateTable: updateTable,
+    readFromTable: readFromTable
 }
