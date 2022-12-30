@@ -22,6 +22,10 @@ let responses = {
         "status": "SUCCES",
         "message": "The device has know been registred as known"
     },
+    "updateOfDataComplete": {
+        "status": "SUCCES",
+        "message": "The data was updated succesfully"
+    },
     "unReadableData": {
         "status": "ERROR",
         "message": "The data could not be parsed as JSON"
@@ -29,6 +33,14 @@ let responses = {
     "missingFunctionOfData": {
         "status": "ERROR",
         "message": "The function of the data could not be understood"
+    },
+    "missingDeviceType": {
+        "status": "ERROR",
+        "message": "The device type was not included"
+    },
+    "missingDeviceId": {
+        "status": "ERROR",
+        "message": "The device ID was not included"
     },
     "deviceUnknown": {
         "status": "ERROR",
@@ -40,7 +52,11 @@ let responses = {
     },
     "incorrectProperties": {
         "status": "ERROR",
-        "message": "Some properties wher either missing or was not of the right type"
+        "message": "Some properties where either missing or was not of the right type"
+    },
+    "incorrectData": {
+        "status": "ERROR",
+        "message": "The data was incorrect"
     }
 }
 
@@ -52,6 +68,43 @@ function Client(conn, id) {
     this.id = id;
 
     this.status = "unknown";
+
+    this.evaluateRecievedData = function(data, allPMandatory) {
+
+        let deviceType = data["properties"]["deviceType"];
+        let requiredProperties = deviceTypes[deviceType]
+        let correct = true;
+        let insertedData = [];
+
+        console.log("Required properties - ", requiredProperties)
+        console.log("Device properties - ", data["properties"])
+        
+        for (let i = 0; i < requiredProperties.length; i++) {
+
+            // If the propertie was not included in the update and all properties are mandatory the data is incorrect
+            if (! data["properties"][requiredProperties[i][0]] && allPMandatory) correct = false;
+            
+            console.log("typeof ", typeof data["properties"][requiredProperties[i][0]])
+            console.log("required type ", requiredProperties[i][1])
+            
+            // If the property is not of the correct type and the property is not undefined 
+            // (if it was undefined the error would have been caught above)
+            if (typeof data["properties"][requiredProperties[i][0]] != requiredProperties[i][1] && data["properties"][requiredProperties[i][0]] != undefined) correct = false;
+
+            // If the property  inot undefined it is included is important to say that the data 
+            // can be correct even with some undefined properties
+            if (! (data["properties"][requiredProperties[i][0]] == undefined)) {
+                
+                insertedData.push([requiredProperties[i][0], data["properties"][requiredProperties[i][0]]]);
+            
+            }
+        }
+
+        if (! correct) return "incorrect"
+
+        return insertedData;
+
+    };
 
     this.conn.on('data', recievedData => {
         
@@ -65,20 +118,27 @@ function Client(conn, id) {
         // the database this way the database can be updated directly
         
         let data;
+        let response;
+
 
         try {
             data = JSON.parse(recievedData);
             console.log(JSON.parse(recievedData));
         }
         catch(e) {
-            console.log(e);
+            // console.log(e);
             console.log(data)
             return this.conn.write(JSON.stringify(responses["unReadableData"]) + "\n")
         }
 
-        let response;
+        let table = data["properties"]["deviceType"];
 
         if (! (data["function"])) return this.conn.write(JSON.stringify(responses["missingFunctionOfData"]) + "\n")
+
+        if (! (data["properties"]["deviceType"])) return this.conn.write(JSON.stringify(responses["missingDeviceType"]) + "\n")
+
+        if (! (data["properties"]["deviceId"])) return this.conn.write(JSON.stringify(responses["missingDeviceId"]) + "\n")
+
 
         if (this.status == "unknown") {
 
@@ -89,41 +149,60 @@ function Client(conn, id) {
             // If no properties are found an error is also returned
             if (! data["properties"]) return this.conn.write(JSON.stringify(responses["missingProperties"]) + "\n");
 
-            let deviceType = data["properties"]["deviceType"];
-            let requiredProperties = deviceTypes[deviceType]
-            let correct = true;
-            let insertedData = [];
+            insertedData = this.evaluateRecievedData(data, true)
 
-            console.log("Required properties - ", requiredProperties)
-            console.log("Device properties - ", data["properties"])
+            console.log("INSERTED DATA ", insertedData);
 
+            if (insertedData == "incorrect") {
 
-            for (let i = 0; i < requiredProperties.length; i++) {
+                // If the program makes it to this point the properties are ready to be inserted into the database
+                // Table must be created first
+                insertIntoTable(conn, table, insertedData)
 
-                console.log("typeof ", typeof data["properties"][requiredProperties[i][0]])
-                console.log("required type ", requiredProperties[i][1])
-                // If the property is not of the correct type the varible correct is set to false
-                if (typeof data["properties"][requiredProperties[i][0]] != requiredProperties[i][1]) correct = false;
-
-                insertedData.push([requiredProperties[i][0], data["properties"][requiredProperties[i][0]]]);
+                // Setting the response back the client
+                response = JSON.stringify(responses["incorrectProperties"]) + "\n";
+            }
+            
+            else {
+                response = JSON.stringify(responses["initialConnectionComplete"]) + "\n"
+                this.status = "known"
 
             }
 
-            // If correct is not true an error is send back to the client
-            if (! correct) return this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
+            console.log("INSERTED DATA");
+            console.log("TABLE: ", table)
+            console.log("DATA: ", insertedData)
 
-            console.log(insertedData);
+        }
 
-            // If the program makes it to this point the properties are ready to be inserted into the database
-            // Table must be created first
-            // insertIntoTable(conn, insertedData)
+        if (data["function"] == "updateOfData") {
 
-            // Setting the response back the client
-            response = JSON.stringify(responses["initialConnectionComplete"]) + "\n"
+            let updatedData;
+            let where = ["id", data["properties"]["deviceId"]];
+            // If no properties found
+            if (! data["properties"]) return this.conn.write(JSON.stringify(response["missingProperties"]))
+
+            updatedData = this.evaluateRecievedData(data, false)
+
+            if (updateTable == "incorrect") {
+                response = JSON.stringify(responses["incorrectProperties"]) + "\n";
+            } else {
+                response = JSON.stringify(responses["updateOfDataComplete"]) + "\n";
+            }
+
+            // At the moment the table is non existing
+            // updateTable(conn,table,where, updatedData);
+
+            console.log("UPDATED DATA")
+            console.log("WHERE: ", where)
+            console.log("TABLE: ", table)
+            console.log("DATA: ", updatedData)
 
         }
 
         // Response to client after having succesfully recieved data
+        // If response = undefined send back error !
+        if (response == undefined) response = JSON.stringify(responses["incorrectData"]) + "\n";
         this.conn.write(response);
 
         console.log("Send back: ", response);
