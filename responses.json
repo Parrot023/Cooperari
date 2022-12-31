@@ -1,0 +1,42 @@
+{
+    "initialConnectionComplete": {
+        "status": "SUCCES",
+        "message": "The device has now been registred as known"
+    },
+    "updateOfDataComplete": {
+        "status": "SUCCES",
+        "message": "The data was updated succesfully"
+    },
+    "unReadableData": {
+        "status": "ERROR",
+        "message": "The data could not be parsed as JSON"
+    },
+    "missingFunctionOfData": {
+        "status": "ERROR",
+        "message": "The function of the data could not be understood"
+    },
+    "missingDeviceType": {
+        "status": "ERROR",
+        "message": "The device type was not included"
+    },
+    "missingDeviceId": {
+        "status": "ERROR",
+        "message": "The device ID was not included"
+    },
+    "deviceUnknown": {
+        "status": "ERROR",
+        "message": "Device unknown"
+    },
+    "missingProperties": {
+        "status": "ERROR",
+        "message": "No device properties could be found"
+    },
+    "incorrectProperties": {
+        "status": "ERROR",
+        "message": "Some properties where either missing or was not of the right type"
+    },
+    "incorrectData": {
+        "status": "ERROR",
+        "message": "The data was incorrect"
+    }
+}
