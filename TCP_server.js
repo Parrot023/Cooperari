@@ -47,11 +47,17 @@ const tools = require('./tools');
 const frontendPort = 3000;
 const backendPort = 9000;
 
+let DBconn = tools.connectToSqlServer();
+
 let clients = {};
 
-let id = 0;
+let device_count = 2;
 
 const app = express()
+
+tools.setDB(DBconn, 'test_db')
+
+
 
 app.get('/', (req, res) => {
 
@@ -69,17 +75,42 @@ app.get('/', (req, res) => {
 const server = net.createServer(conn => {
 
     // Happens every time a new connection is made
-    console.log("Client " + id + ": connected");
+
+    // The first time the device connects its status will be un initialized
+    
+    // To initialize the client will tell the server what properties it has
+    // these properties will have an initial value given by the connecting client.
+    // The properties will be compared to the ones in the database if they match the device is added
+
+    // A device is first a "known" device after having been initialized
+
+    console.log("Client " + device_count + ": connected");
 
     conn.write(JSON.stringify({
-        "id": id,
+        "Device count": device_count,
     }) + "\n")
 
-    let c = new tools.Client(conn, id)
+    let c = new tools.Client(conn, DBconn, (id) => {
 
-    clients[String(id)] = c;
+        // Device in database
 
-    id += 1;
+        clients[String(id)] = c;
+
+        console.log(clients)
+    
+    }, () => {
+    
+        // Device not in database
+
+        clients[String(device_count)] = c;
+
+        c.id = device_count;
+
+        c.propertyChange({"deviceId": c.id});
+
+        device_count ++;
+    
+    })
 
 });
 

@@ -3,6 +3,10 @@
         "status": "SUCCES",
         "message": "The device has now been registred as known"
     },
+    "connectionComplete": {
+        "status": "SUCCES",
+        "message": "The device connected succesfully"
+    },
     "updateOfDataComplete": {
         "status": "SUCCES",
         "message": "The data was updated succesfully"
