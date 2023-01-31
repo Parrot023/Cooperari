@@ -41,17 +41,11 @@ function Client(conn, DBconn, onIdentified, onInitialyzation) {
         let requiredProperties = deviceTypes[deviceType]
         let correct = true;
         let insertedData = [];
-
-        // console.log("Required properties - ", requiredProperties)
-        // console.log("Device properties - ", data["properties"])
         
         for (let i = 0; i < requiredProperties.length; i++) {
 
             // If the propertie was not included in the update and all properties are mandatory the data is incorrect
             if (data["properties"][requiredProperties[i][0]] == undefined && allPMandatory) correct = false;
-            
-            // console.log("typeof ", typeof data["properties"][requiredProperties[i][0]])
-            // console.log("required type ", requiredProperties[i][1])
             
             // If the property is not of the correct type and the property is not undefined 
             // (if it was undefined the error would have been caught above)
@@ -75,148 +69,146 @@ function Client(conn, DBconn, onIdentified, onInitialyzation) {
     this.conn.on('data', recievedData => {
         
         console.log("Data recieved from client " + this.id + ": ", recievedData.toString());
-
-        // From the client the data is in the string string format. 
-        // The data must therefore be parsed to json
-
-        // I believe there has be included som sort of data part
-        // in this data part every comma seperated piece of data will have a matching col in
-        // the database this way the database can be updated directly
-        
         let data;
         let response;
-
-
+        
+        // From the client the data is a string string. 
+        // The data must therefore be parsed to json
+        
         try {
             data = JSON.parse(recievedData);
             console.log(JSON.parse(recievedData));
         }
         catch(e) {
-            // console.log(e);
+            // If an error occurs the client most likely sent incorrect JSON
+            console.log("There was an error: ", e);
             console.log(data)
             return this.conn.write(JSON.stringify(responses["unReadableData"]) + "\n")
         }
 
-        let table = data["properties"]["deviceType"];
-
+        // If no function was included an error is returned
         if (! (data["function"])) return this.conn.write(JSON.stringify(responses["missingFunctionOfData"]) + "\n")
-
+        
+        // If no properties are found an error is returned
+        if (! data["properties"]) return this.conn.write(JSON.stringify(responses["missingProperties"]) + "\n");
+        
+        // If no device type was included an error is returned
         if (! (data["properties"]["deviceType"])) return this.conn.write(JSON.stringify(responses["missingDeviceType"]) + "\n")
-
+        
+        // If no device id was included an error is returned
         if (! (data["properties"]["deviceId"])) return this.conn.write(JSON.stringify(responses["missingDeviceId"]) + "\n")
-
+        
+        let table = data["properties"]["deviceType"];
 
         if (this.identified == false) {
 
             // LOG
-            console.log("Device was not identified");
+            console.log("Device has not been identified yet");
 
-            // If the device is unknown but the function from the client wasnt specified as
-            // initialConnection an error is returned
-            if (! (data["function"] == "initialConnection")) console.log("Device did not supply a function of the request");
+            // If the device is has not been identified but the function from the client was not specified as
+            // initialConnection, an error is returned
             if (! (data["function"] == "initialConnection")) return this.conn.write(JSON.stringify(responses["deviceUnknown"]) + "\n");
 
-            // If no properties are found an error is also returned
-            if (! data["properties"]) console.log("Device did not supply any properties")
-            if (! data["properties"]) return this.conn.write(JSON.stringify(responses["missingProperties"]) + "\n");
-
+            // The database is read to determine if the device has previously been connected
             readFromTable(DBconn, data["properties"]["deviceType"], [["deviceId", data["properties"]["deviceId"]]], (result) => {
                 
-                // console.log("Result of database search: " + result)
+                /*
+                In this stage of the code a handshake is complete when a device has either 
+                been recognized or when the information of an unknown device has been saved 
+                in the database. This is like asking a stranger for their name and trusting them
+                fully afterwards. This obviusly has to be improved
+                */
                 
                 if (result.length > 0) {
-                    
-                    console.log("Device was found in database")
+
+                    // LOG
+                    console.log("The device has previously been connected")
 
                     this.id = result[0]["deviceId"];
                     this.properties = data["properties"];
 
                     this.identified = true;
 
-                    // CONSIDER THIS
-                    // this.conn.write(JSON.stringify(responses["connectionComplete"]) + "\n");
-
-                    //response = JSON.stringify(responses["connectionComplete"]) + "\n";
+                    // A message about the succesfull connection is sent back to the client
                     this.conn.write(JSON.stringify(responses["connectionComplete"]) + "\n");
 
+                    // The callback onIdentified is called (see TCP_server.js)
                     onIdentified(this.id);
 
                 } else {
 
-                    console.log("Device was not found in database")
+                    console.log("The device has not previously been connected")
 
+                    // Prepares the data from the device to be inserted into the database
                     dataToBeInserted = this.evaluateRecievedData(data, true)
 
                     if (dataToBeInserted == "incorrect") {
 
-                        console.log("Data to be inserted was incorrect")
-
-                        // Setting the response back the client
-                        // response = JSON.stringify(responses["incorrectProperties"]) + "\n";
+                        // A message about the unsuccesfull connection is sent back to the client
                         this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
 
                     } else {
 
-                        console.log("Data to be inserted was correct");
-
-                        // If the program makes it to this point the properties are ready to be inserted into the database
-                        // Table must be created first
+                        // The prepared data is inserted into the database
                         insertIntoTable(DBconn, table, dataToBeInserted)
 
-                        //response = JSON.stringify(responses["initialConnectionComplete"]) + "\n"
+                        // A message about the succesfull connection is sent back to the client
                         this.conn.write(JSON.stringify(responses["initialConnectionComplete"]) + "\n");
                         
                         this.identified = true
                         this.properties = data["properties"]
 
-
-                        // console.log("INSERTED DATA");
-                        // console.log("TABLE: ", table)
-                        // console.log("DATA: ", dataToBeInserted)
-
+                        // The callback onInitialyzation is called (see TCP_server.js)
                         onInitialyzation();
 
                     }
                 }
             })
         }
+        
+        if (this.identified == false) {
 
-        if (data["function"] == "updateOfData") {
+            /*
+            This scope should not run unless the device has been identified
+            */
 
-            let updatedData;
-            let where = ["id", data["properties"]["deviceId"]];
-            // If no properties found
-            if (! data["properties"]) return this.conn.write(JSON.stringify(response["missingProperties"]))
+            if (data["function"] == "updateOfData") {
 
-            updatedData = this.evaluateRecievedData(data, false)
+                // Where the data has to be inserted
+                let where = ["id", data["properties"]["deviceId"]];
 
-            if (updateTable == "incorrect") {
-                //response = JSON.stringify(responses["incorrectProperties"]) + "\n";
-                this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
-            } else {
-                //response = JSON.stringify(responses["updateOfDataComplete"]) + "\n";
-                this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
+                // The updated version of the device data
+                let updatedData = this.evaluateRecievedData(data, false)
+
+                // I dont get this!!!!!!
+
+                // if (updateTable == "incorrect") {
+                //     //response = JSON.stringify(responses["incorrectProperties"]) + "\n";
+                //     this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
+                // } else {
+                //     //response = JSON.stringify(responses["updateOfDataComplete"]) + "\n";
+                //     this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
+                // }
+
+                updateTable(DBconn, table, where, updatedData);
+
+                // Im leaving this to test this part later
+
+                // console.log("UPDATED DATA")
+                // console.log("WHERE: ", where)
+                // console.log("TABLE: ", table)
+                // console.log("DATA: ", updatedData)
+
             }
-
-            updateTable(DBconn, table, where, updatedData);
-
-            // console.log("UPDATED DATA")
-            // console.log("WHERE: ", where)
-            // console.log("TABLE: ", table)
-            // console.log("DATA: ", updatedData)
-
         }
-
-        // Response to client after having succesfully recieved data
-        // If response = undefined send back error !
-        //if (response == undefined) response = JSON.stringify(responses["incorrectData"]) + "\n";
-        //this.conn.write(response);
-
-        //console.log("Send back: ", response);
-
     });
 
     this.conn.on('end', () => {
+
+        /*
+        When this happens the device must be removed from the dict of connecte devices
+        Maybe with a callback like the other 2 ones
+        */
 
         console.log("Client " + this.id + ": left");
 
