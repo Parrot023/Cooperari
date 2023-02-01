@@ -206,7 +206,7 @@ function Client(conn, DBconn, onIdentified, onInitialyzation) {
     this.conn.on('end', () => {
 
         /*
-        When this happens the device must be removed from the dict of connecte devices
+        When this happens the device must be removed from the dict of connected devices
         Maybe with a callback like the other 2 ones
         */
 
@@ -215,34 +215,43 @@ function Client(conn, DBconn, onIdentified, onInitialyzation) {
     });
 
     this.propertyChange = function(changes) {
-        // this function should read the database see what has changed and then update the database
 
+        /*
+        This function reads the database and compares the data to the changed data.
+        Any changes will thne be updated in the database and in the clients own property dict
+
+        THE HOLE CONCEPT MUST BE THOUGHT THROUGH
+
+        */
+
+        // LOG
         console.log("Device " + this.id + ": property change")
-                
+        
+        // Retrieving the dict of required properties for the device
         list_of_properties = deviceTypes[this.properties["deviceType"]]
-
-        // console.log("property change list of properties ", list_of_properties)
 
         let list_of_data = [];
 
         for (let i = 0; i < list_of_properties.length; i++) {
 
+            
             if (changes[list_of_properties[i][0]]) {
-
-               this.properties[list_of_properties[i][0]] = changes[list_of_properties[i][0]]
+                
+                // Changes this.properties if the key has chnaged value
+                this.properties[list_of_properties[i][0]] = changes[list_of_properties[i][0]]
 
             }
 
-            // console.log("pushed ", [list_of_properties[i][0], this.properties[list_of_properties[i][0]]])
+            // Pushes data to the list in the form ["column name", "value"]
+            // At the moment every property is rewritten in the database. This could be optimized 
+            // so that only the changed ones are updated. This can be achieved by only pushing to
+            // list_of_data when a change is detected
             list_of_data.push([list_of_properties[i][0], this.properties[list_of_properties[i][0]]])
 
         }
-
-        // console.log("List of data ", list_of_data);
         
-
+        // updates the databse with list_of_data where deviceId = this.properties["deviceId"]
         updateTable(DBconn, this.properties["deviceType"], [["deviceId", this.properties["deviceId"]]], list_of_data);
-
         
     };
 
@@ -250,8 +259,14 @@ function Client(conn, DBconn, onIdentified, onInitialyzation) {
 
 // DATABASE PART ---------------------------------------------------------
 
-// Connects to the sql server
 let connectToSqlServer = function() {
+
+    /*
+    mysql2 is used to establish a connection to the mysql server. mysql2 was chosen 
+    over mysql1 as it is never, but it also elimated some authentication errors. 
+    Database credentials are stored in a .env file
+    */
+
     let conn = mysql.createConnection({
         host: process.env.SQL_HOST,
         user: process.env.SQL_USER,
@@ -261,18 +276,33 @@ let connectToSqlServer = function() {
     return conn;
 };
 
-// Uses the conn object to select the wanted database
 let setDB = function(conn, db_name) {
+
+    /*
+    This function takes a mysql connection and a database name to select the wanted database.
+    setDB does not return anything but it is neccescary for the other database related funcitions
+    to function
+    */
+
     conn.query('USE ' + db_name + ";", (err, result) => {
         if (err) throw err;
-        // console.log(result);
     });
 }
 
-// Creates a table based on given data
 let createTable = function(conn, tableName, tableData) {
 
-    // Should check if the table already exists
+    /*
+    createTable as the name implies creates a table. To do this it needs a mysql connection (conn)
+    a table name (tableName) and data about the table to be created (tableData)
+
+    tableData is given in the form [["colName", "colType"], ..., ["colName", "colType"]]
+
+    For furture optimization it would be cool for this function to create the necessary tables based
+    on the JSON object deviceTypes
+
+    also for future developement the function must check if a table exists or be able to handle
+    the error from mysql when trying to create a table with an already existing name
+    */
 
     let name = tableName;
 
@@ -282,6 +312,7 @@ let createTable = function(conn, tableName, tableData) {
         let colName = tableData[i][0];
         let colType = tableData[i][1];
     
+        // This can be improved by just adding a comma if this if statement is false
         if (i == tableData.length - 1) cols += colName + " " + colType;
         
         else cols += colName + " " + colType + ", ";
@@ -290,17 +321,22 @@ let createTable = function(conn, tableName, tableData) {
 
     let sql = "CREATE TABLE " + name + " (" + cols + ");";
    
-    // console.log(sql);
-
     conn.query(sql, (err, result) => {
         if (err) throw err;
         return result;
     })
 }
 
-// Inserts a new row of data into a table
-// Needs some error handling in terms of missing data or wrong data
-let insertIntoTable = function(conn, table, data) {
+let insertIntoTable = function(conn, tableName, data) {
+
+    /*
+    insertIntoTable as the name implies inserts a new row of data into a table. 
+    To do this it needs a mysql connection (conn) a table name (table) and the data (data) 
+    to be inserted.
+
+    For future developement the fucntion most do more error handling. Like checking if the table
+    exists and whheter or not the data is correct or missing parts.
+    */
 
     let order = "";
     let values = "";
@@ -316,11 +352,9 @@ let insertIntoTable = function(conn, table, data) {
 
     }
 
-    sql = "INSERT INTO " + table + " (" + order + ") VALUES (" + values + ");"
+    sql = "INSERT INTO " + tableName + " (" + order + ") VALUES (" + values + ");"
 
-    // console.log(sql)
-
-    conn.query("INSERT INTO " + table + " (" + order + ") VALUES (" + values + ");", (err, result) => {
+    conn.query("INSERT INTO " + tableName + " (" + order + ") VALUES (" + values + ");", (err, result) => {
         if (err) throw err;
         console.log("Device inserted")
         return result
@@ -329,6 +363,12 @@ let insertIntoTable = function(conn, table, data) {
 
 // Updatas data in a table based on som changes and conditions
 let updateTable = function (conn, table, where, data) {
+
+    /*
+    updateTable takes a mysql connection (conn) a table name (table) data about where
+    the data must be updated and the data to be updated. This function could also benefit from
+    some error handling for missing or incorret data 
+    */
 
     let conditions = "";
     let changes = "";
@@ -339,6 +379,8 @@ let updateTable = function (conn, table, where, data) {
     
     for (let i = 0; i < iterations; i ++) {
 
+        // As there might be more condtions than data to be inserted and vice versa
+        // we have to check if there are more condtitions or data
         if (where[i]) {
             conditions += where[i][0] + "=" + "'" + where[i][1] + "'";
             // Add commas if not the last
@@ -357,8 +399,6 @@ let updateTable = function (conn, table, where, data) {
 
     let sql = "UPDATE " + table + " SET " + changes + " WHERE " + conditions + ";"
 
-    // console.log(sql)
-
     conn.query(sql, (err, result) => {
         if (err) throw err;
         return result;
@@ -367,7 +407,14 @@ let updateTable = function (conn, table, where, data) {
 
 // Reads data from table based on conditions in the form ["col1", "hi"] (col1='hi')
 // Calls callback when query is done
-let readFromTable = function (conn, table, where, callback) {
+let readFromTable = function (conn, tableName, where, callback) {
+
+    /*
+    readFromTable retrieves every col in a given table based on conditions 
+    in the form [["colName", "value"], ..., ["colName", "value"]]. For this a mysql connection (conn)
+    is needed and a table name (tableName). When reading is done the callback is called with the
+    result as an input parameter
+    */
 
     let conditions = "";
 
@@ -376,12 +423,12 @@ let readFromTable = function (conn, table, where, callback) {
 
         if (where[i]) conditions += where[i][0] + "=" + "'" + where[i][1] + "'";
 
-        // Add commas if not the last
+        // Commas are added if not the last condition
         if (i != where.length - 1) conditions += ",";
 
     }
 
-    let sql = "SELECT * FROM " + table + " WHERE " + conditions + ";"
+    let sql = "SELECT * FROM " + tableName + " WHERE " + conditions + ";"
 
     conn.query(sql, (err, result) => {
         if (err) throw err;
