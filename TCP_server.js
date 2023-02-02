@@ -40,30 +40,41 @@
 
 // When all this is done is believe we will have a stable backed foundation for any IOT project
 
+// net is for the TCP connection between the device and the server
 const net = require('net');
+// express is for the HTTP connection between the client and the server
 const express = require('express');
+// tools is library that helps with the communication between the client and the server
 const tools = require('./tools');
 
 const frontendPort = 3000;
 const backendPort = 9000;
 
+// Creates the mysql connection to the server
 let DBconn = tools.connectToSqlServer();
 
+// List of connected devices
 let clients = {};
 
+// If a device has not been connected to the server before it will receive and id
+// This id is for know just a number corresponds to the number of known devices
 let device_count = 2;
 
+// Express app for frontend
 const app = express()
 
+// Setting the used database to test_db (in sql syntax - USE test_db)
 tools.setDB(DBconn, 'test_db')
 
-
-
+// Test route for sending data to a device
 app.get('/', (req, res) => {
 
+    console.log("User send data")
     console.log("clientId: " + req.query["clientId"]);
     console.log("on: " + req.query["on"]);
 
+    // Sending the data to the device
+    // This should in the future happen thorugh a function in the client object function
     clients[String(req.query["clientId"])].conn.write(JSON.stringify({
         "on": req.query["on"],
     }) + "\n")
@@ -76,7 +87,7 @@ const server = net.createServer(conn => {
 
     // Happens every time a new connection is made
 
-    // The first time the device connects its status will be un initialized
+    // The first time the device connects, its status will be uninitialized
     
     // To initialize the client will tell the server what properties it has
     // these properties will have an initial value given by the connecting client.
@@ -86,6 +97,7 @@ const server = net.createServer(conn => {
 
     console.log("Client " + device_count + ": connected");
 
+    // Initial message to the device. This should start the handshake with the device
     conn.write(JSON.stringify({
         "Device count": device_count,
     }) + "\n")
@@ -102,10 +114,14 @@ const server = net.createServer(conn => {
     
         // Device not in database
 
+        // The device is added to the JSON object of connected devices with the key device_count
         clients[String(device_count)] = c;
 
-        c.id = device_count;
+        // This is not needed the new id can just be an input to the funciton propertyChange
+        // Thats how it should be. Like statechange in React
+        c.id = device_count; // Should be removed in future development
 
+        //for future developement - c.propertyChange({"deviceId": device_count});
         c.propertyChange({"deviceId": c.id});
 
         device_count ++;
@@ -114,6 +130,7 @@ const server = net.createServer(conn => {
 
 });
 
+// Startes the servers
 server.listen(backendPort, () => {
     console.log("Backend open on port: " + backendPort);
 });

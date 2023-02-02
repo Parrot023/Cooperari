@@ -222,6 +222,8 @@ function Client(conn, DBconn, onIdentified, onInitialyzation) {
 
         THE HOLE CONCEPT MUST BE THOUGHT THROUGH
 
+        THE LIST OF PROPERTIES MUST BE SET IN THE BEGINNING
+
         */
 
         // LOG
