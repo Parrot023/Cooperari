@@ -46,6 +46,9 @@ const net = require('net');
 const express = require('express');
 // tools is library that helps with the communication between the client and the server
 const tools = require('./tools');
+// The object used to communicate with a device (Each connected device is an instance of this function object)
+const Device = require('./device').Device;
+
 
 const frontendPort = 3000;
 const backendPort = 9000;
@@ -95,16 +98,16 @@ const server = net.createServer(conn => {
 
     // A device is first a "known" device after having been initialized
 
-    console.log("Client " + device_count + ": connected");
+    console.log("A new device started a handshake #" + device_count);
 
     // Initial message to the device. This should start the handshake with the device
     conn.write(JSON.stringify({
-        "Device count": device_count,
+        "status":"idUnknown",
     }) + "\n")
 
-    let c = new tools.Client(conn, DBconn, (id) => {
+    let c = new Device(conn, DBconn, (id) => {
 
-        // Device in database
+        // This callback is called if the device is found in the database
 
         clients[String(id)] = c;
 
@@ -112,7 +115,7 @@ const server = net.createServer(conn => {
     
     }, () => {
     
-        // Device not in database
+        // This callback is called if the device is not found in the database
 
         // The device is added to the JSON object of connected devices with the key device_count
         clients[String(device_count)] = c;
