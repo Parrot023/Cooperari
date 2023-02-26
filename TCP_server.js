@@ -46,6 +46,7 @@ const net = require('net');
 const express = require('express');
 // tools is library that helps with the communication between the client and the server
 const tools = require('./tools');
+const { Console } = require('console');
 // The object used to communicate with a device (Each connected device is an instance of this function object)
 const Device = require('./device').Device;
 
@@ -129,6 +130,25 @@ const server = net.createServer(conn => {
 
         device_count ++;
     
+    }, (id) => {
+
+        // This callback is called when the device disconnects from the server
+
+        if (clients[id]) {
+
+            // If the devices completed a handshake with the server
+            
+            console.log("Device", id, ": Disconnected");
+            delete clients[id];
+
+        } else {
+
+            // Would be nice to have a handshake id to identify the uncompleted handshake
+            console.log("A device disconnected before completing a handshake")
+        
+        }
+
+
     })
 
 });

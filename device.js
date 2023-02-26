@@ -1,6 +1,10 @@
 // CLIENT PART ----------------------------------------------------------
 
 const fs = require('fs');
+const readFromTable = require('./tools').readFromTable;
+const insertIntoTable = require('./tools').insertIntoTable;
+const updateTable = require('./tools').updateTable;
+
 
 let return_message = {
     "message": "hi",
@@ -22,7 +26,7 @@ let rawResponses = fs.readFileSync('responses.json')
 let responses = JSON.parse(rawResponses);
 
 // Client object to handle the connection with the client
-function Device(conn, DBconn, onIdentified, onInitialyzation) {
+function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
 
     this.conn = conn;
     this.id = undefined;
@@ -207,6 +211,8 @@ function Device(conn, DBconn, onIdentified, onInitialyzation) {
         */
 
         console.log("Client " + this.id + ": left");
+
+        onDisconnected(this.id);
 
     });
 
