@@ -254,6 +254,7 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
 
         }
         
+        this.conn.write(JSON.stringify({"function": "propertyChange", "properties": this.properties}) + "\n");
         // updates the databse with list_of_data where deviceId = this.properties["deviceId"]
         updateTable(DBconn, this.properties["deviceType"], [["deviceId", this.properties["deviceId"]]], list_of_data);
         

@@ -6,11 +6,10 @@ module.exports = function(app, devices){
         console.log("clientId: " + req.query["clientId"]);
         console.log("on: " + req.query["on"]);
     
-        // Sending the data to the device
-        // This should in the future happen thorugh a function in the client object function
-        devices[String(req.query["clientId"])].conn.write(JSON.stringify({
-            "on": req.query["on"],
-        }) + "\n")
+        // The properties of the device are changed. As the function only uses key-value pairs 
+        // required by the device in the update of the properties the entire req body is for now sent.
+        // excess properties are ignored
+        devices[String(req.query["clientId"])].propertyChange(req.query)
     
         res.send("<h1>Thanks for your input</h1> <br><br> <p>You hav now changed the state of client " + req.query["clientId"] + " to " + req.query["on"] + "</p>");
     
