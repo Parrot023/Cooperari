@@ -6,6 +6,7 @@ const express = require('express');
 // tools is library that helps with the communication between the client and the server
 const tools = require('./tools');
 const { Console } = require('console');
+const device = require('./device');
 // The object used to communicate with a device (Each connected device is an instance of this function object)
 const Device = require('./device').Device;
 
@@ -25,26 +26,11 @@ let device_count = 2;
 
 // Express app for frontend
 const app = express()
+// Requiring the routes for the express server
+require('./routes')(app, devices);
 
 // Setting the used database to test_db (in sql syntax - USE test_db)
 tools.setDB(DBconn, 'test_db')
-
-// Test route for sending data to a device
-app.get('/', (req, res) => {
-
-    console.log("User send data")
-    console.log("clientId: " + req.query["clientId"]);
-    console.log("on: " + req.query["on"]);
-
-    // Sending the data to the device
-    // This should in the future happen thorugh a function in the client object function
-    devices[String(req.query["clientId"])].conn.write(JSON.stringify({
-        "on": req.query["on"],
-    }) + "\n")
-
-    res.send("<h1>Thanks for your input</h1> <br><br> <p>You hav now changed the state of client " + req.query["clientId"] + " to " + req.query["on"] + "</p>");
-
-});
 
 const server = net.createServer(conn => {
 
@@ -112,7 +98,7 @@ const server = net.createServer(conn => {
 
 });
 
-// Startes the servers
+// Starts the servers
 server.listen(backendPort, () => {
     console.log("Backend open on port: " + backendPort);
 });
