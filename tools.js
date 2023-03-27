@@ -90,16 +90,26 @@ let insertIntoTable = function(conn, tableName, data) {
 
     for (let i = 0; i < data.length; i ++) {
         
-        if (i == data.length - 1) order += data[i][0];
-        else order += data[i][0] + ", ";
-        
-        
-        if (i == data.length - 1) values += "'" + data[i][1] + "'";
-        else values += "'" + data[i][1] + "'" + ", ";
+        if (data[i][0] == "deviceType") {
+            console.log("deviceType or id")
+        }
+        else {
+            // deviceType is sent by the device as a property but should not be included in the table
+
+            if (i == data.length - 1) order += data[i][0];
+            else order += data[i][0] + ", ";
+            
+            
+            if (i == data.length - 1) values += "'" + data[i][1] + "'";
+            else values += "'" + data[i][1] + "'" + ", ";
+
+        }
 
     }
 
     sql = "INSERT INTO " + tableName + " (" + order + ") VALUES (" + values + ");"
+
+    console.log(sql);
 
     conn.query("INSERT INTO " + tableName + " (" + order + ") VALUES (" + values + ");", (err, result) => {
         if (err) throw err;
@@ -122,9 +132,15 @@ let updateTable = function (conn, table, where, data) {
 
     let iterations = data.length;
 
+    // console.log(where);
+    // console.log(data);
+
     if (where.length > data.length) iterations = where.length;
     
+
     for (let i = 0; i < iterations; i ++) {
+
+        //console.log("data[i] :" + data[i]);
 
         // As there might be more condtions than data to be inserted and vice versa
         // we have to check if there are more condtitions or data
@@ -135,13 +151,17 @@ let updateTable = function (conn, table, where, data) {
 
         }
 
-        if (data[i]) {
-            changes += data[i][0] + "=" + "'" + data[i][1] + "'"; 
-            // Add commas if not the last
-            if (i != data.length - 1) changes += ",";
-        }
+        if (data[i][0] == "deviceType" || data[i][0] == "deviceId") {console.log("device id or type")}
+        else {
 
-        
+            if (data[i]) {
+                changes += data[i][0] + "=" + "'" + data[i][1] + "'"; 
+                // Add commas if not the last
+                if (i != data.length - 1) changes += ",";
+            }    
+         
+        }
+      
     }
 
     let sql = "UPDATE " + table + " SET " + changes + " WHERE " + conditions + ";"
@@ -184,6 +204,47 @@ let readFromTable = function (conn, tableName, where, callback) {
     })
 }
 
+let correctTables = function(conn, tables) {
+
+    let tableName;
+
+    conn.query("SHOW TABLES", (err, r) => {
+        
+        if (err) throw err;
+        // Calls callback when query is done
+        result = r;
+        console.log(r);
+
+        let exists = false;
+
+        for (i of tables) {
+
+            // console.log(i);
+
+            tableName = i[0];
+
+            for (j of r) {
+
+                if (tableName == j["Tables_in_test_db"]) {exists = true;}
+
+            }
+
+            if (!exists) {
+
+                //Create table
+                console.log(tableName + " does not exist");
+                createTable(conn, tableName,i[1]);
+
+            }
+        
+        }
+
+    })
+
+    
+
+}
+
 // Exports functions ----------------------------------------------------------
 module.exports = {
     connectToSqlServer: connectToSqlServer,
@@ -191,5 +252,6 @@ module.exports = {
     createTable: createTable,
     insertIntoTable: insertIntoTable,
     updateTable: updateTable,
-    readFromTable: readFromTable
+    readFromTable: readFromTable,
+    correctTables: correctTables,
 }

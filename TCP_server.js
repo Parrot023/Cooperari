@@ -14,6 +14,13 @@ const Device = require('./device').Device;
 const frontendPort = 3000;
 const backendPort = 9000;
 
+const tables = [["switch", [
+    ["deviceId", "VARCHAR(255)"],
+    ["userId", "VARCHAR(255)"],
+    ["deviceName", "VARCHAR(255)"],
+    ["state", "VARCHAR(255)"],
+]]];
+
 // Creates the mysql connection to the server
 let DBconn = tools.connectToSqlServer();
 
@@ -27,10 +34,12 @@ let device_count = 2;
 // Express app for frontend
 const app = express()
 // Requiring the routes for the express server
-require('./routes')(app, devices);
+require('./routes')(app, devices, tools, DBconn);
 
 // Setting the used database to test_db (in sql syntax - USE test_db)
 tools.setDB(DBconn, 'test_db')
+
+tools.correctTables(DBconn, tables);
 
 const server = net.createServer(conn => {
 
@@ -71,7 +80,7 @@ const server = net.createServer(conn => {
         d.id = device_count; // Should be removed in future development
 
         //for future developement - c.propertyChange({"deviceId": device_count});
-        c.propertyChange({"deviceId": d.id});
+        d.propertyChange({"deviceId": d.id});
 
         device_count ++;
     

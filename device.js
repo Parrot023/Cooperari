@@ -13,10 +13,10 @@ let return_message = {
 let deviceTypes = {
     "switch": [
         ["deviceType", "string"],
-        ["deviceId", "number"],
-        ["userId", "number"],
+        ["deviceId", "string"],
+        ["userId", "string"],
         ["deviceName", "string"],
-        ["state", "number"]
+        ["state", "string"]
     ]
 }
 
@@ -42,21 +42,30 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
         let correct = true;
         let insertedData = [];
         
+        //console.log("evaluate date: " + data);
+
         for (let i = 0; i < requiredProperties.length; i++) {
 
             // If the propertie was not included in the update and all properties are mandatory the data is incorrect
-            if (data["properties"][requiredProperties[i][0]] == undefined && allPMandatory) correct = false;
+            if (data["properties"][requiredProperties[i][0]] == undefined && allPMandatory) {
+                correct = false; 
+                //console.log("property was missing" + requiredProperties[i][0]);
+            }
             
             // If the property is not of the correct type and the property is not undefined 
             // (if it was undefined the error would have been caught above)
-            if (typeof data["properties"][requiredProperties[i][0]] != requiredProperties[i][1] && data["properties"][requiredProperties[i][0]] != undefined) correct = false;
+            if (typeof data["properties"][requiredProperties[i][0]] != requiredProperties[i][1] && data["properties"][requiredProperties[i][0]] != undefined) {
+                correct = false;
+                //console.log("A property was not the correct type");
+            } 
 
-            // If the property  inot undefined it is included is important to say that the data 
-            // can be correct even with some undefined properties
+            // If the property is not undefined it is included
+            // it is important to say that the data can be correct even with some undefined properties
             if (! (data["properties"][requiredProperties[i][0]] == undefined)) {
                 
                 insertedData.push([requiredProperties[i][0], data["properties"][requiredProperties[i][0]]]);
             
+                //console.log("a property was undefined");
             }
         }
 
@@ -78,10 +87,11 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
         try {
             data = JSON.parse(recievedData);
             console.log(JSON.parse(recievedData));
+            console.log("correct json")
         }
         catch(e) {
             // If an error occurs the client most likely sent incorrect JSON
-            console.log("There was an error: ", e);
+            console.log("There was an error with the recieved JSON");
             console.log(data)
             return this.conn.write(JSON.stringify(responses["unReadableData"]) + "\n")
         }
@@ -139,6 +149,7 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
 
                     console.log("The device has not previously been connected")
 
+                    console.log(data);
                     // Prepares the data from the device to be inserted into the database
                     dataToBeInserted = this.evaluateRecievedData(data, true)
 
@@ -148,6 +159,8 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
                         this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
 
                     } else {
+
+                        console.log(dataToBeInserted);
 
                         // The prepared data is inserted into the database
                         insertIntoTable(DBconn, table, dataToBeInserted)
@@ -166,7 +179,7 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
             })
         }
         
-        if (this.identified == false) {
+        if (this.identified == true) {
 
             /*
             This scope should not run unless the device has been identified
@@ -174,11 +187,35 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
 
             if (data["function"] == "updateOfData") {
 
-                // Where the data has to be inserted
-                let where = ["id", data["properties"]["deviceId"]];
 
                 // The updated version of the device data
                 let updatedData = this.evaluateRecievedData(data, false)
+
+                 // Where the data has to be inserted
+                 let where = [["deviceId", data["properties"]["deviceId"]]];
+
+                if (updatedData == "incorrect") {
+                
+                    console.log("Data was incorrect");
+                
+                } else {
+                    
+                    //console.log("Data was correct");
+
+                    updateTable(DBconn, table, where, updatedData);
+
+                    this.conn.write(JSON.stringify(responses["updateOfDataComplete"]) + "\n");
+
+                    console.log("Updated table")
+
+                    // Im leaving this to test this part later
+
+                    // console.log("UPDATED DATA")
+                    // console.log("WHERE: ", where)
+                    // console.log("TABLE: ", table)
+                    // console.log("DATA: ", updatedData)
+
+                }
 
                 // I dont get this!!!!!!
 
@@ -190,14 +227,6 @@ function Device(conn, DBconn, onIdentified, onInitialyzation, onDisconnected) {
                 //     this.conn.write(JSON.stringify(responses["incorrectProperties"]) + "\n");
                 // }
 
-                updateTable(DBconn, table, where, updatedData);
-
-                // Im leaving this to test this part later
-
-                // console.log("UPDATED DATA")
-                // console.log("WHERE: ", where)
-                // console.log("TABLE: ", table)
-                // console.log("DATA: ", updatedData)
 
             }
         }
