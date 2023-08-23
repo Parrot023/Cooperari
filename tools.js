@@ -213,15 +213,19 @@ let correctTables = function(conn, tables) {
         if (err) throw err;
         // Calls callback when query is done
         result = r;
-        console.log(r);
+
+        // console.log(r);
 
         let exists = false;
 
+        Console.log("tools.js/correctTables() - Looping though list of necessary tables")
         for (i of tables) {
 
-            // console.log(i);
+            exists = false;
 
             tableName = i[0];
+
+            // console.log(tableName)
 
             for (j of r) {
 
@@ -229,10 +233,11 @@ let correctTables = function(conn, tables) {
 
             }
 
+
             if (!exists) {
 
                 //Create table
-                console.log(tableName + " does not exist");
+                console.log("tools.js/correctTables() - Creating missing table: " + tableName);
                 createTable(conn, tableName,i[1]);
 
             }
