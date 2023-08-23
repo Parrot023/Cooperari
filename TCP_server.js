@@ -14,12 +14,27 @@ const Device = require('./device').Device;
 const frontendPort = 3000;
 const backendPort = 9000;
 
-const tables = [["switch", [
-    ["deviceId", "VARCHAR(255)"],
-    ["userId", "VARCHAR(255)"],
-    ["deviceName", "VARCHAR(255)"],
-    ["state", "VARCHAR(255)"],
-]]];
+// List of tables
+// This list defines what devices there are and what there properties are
+// Upon every server bootup this list is compared to the existing tables. 
+// If the table doesn't exist it is create
+// If the table exists but the values are incorrect the values are corrected
+const tables = [
+    ["switch", [
+        ["deviceId", "VARCHAR(255)"],
+        ["userId", "VARCHAR(255)"],
+        ["deviceName", "VARCHAR(255)"],
+        ["state", "VARCHAR(255)"],
+    ]], 
+    ["pot", [
+        ["deviceId", "VARCHAR(255)"],
+        ["userId", "VARCHAR(255)"],
+        ["deviceName", "VARCHAR(255)"],
+        ["ledState", "VARCHAR(255)"],
+        ["sensorValue", "VARCHAR(255)"],
+        ["pumpState", "VARCHAR(255)"],
+    ]], 
+];
 
 // Creates the mysql connection to the server
 let DBconn = tools.connectToSqlServer();
@@ -53,7 +68,7 @@ const server = net.createServer(conn => {
 
     // A device is first a "known" device after having been initialized
 
-    console.log("A new device started a handshake #" + device_count);
+    console.log("TCP_server.js - A new device started a handshake #" + device_count);
 
     // Initial message to the device. This should start the handshake with the device
     conn.write(JSON.stringify({
@@ -66,14 +81,20 @@ const server = net.createServer(conn => {
 
         devices[String(id)] = d;
 
-        console.log(devices)
+        console.log("TCP_server.js/new Device - List of connected devices:" + devices)
     
     }, () => {
     
         // This callback is called if the device is not found in the database
 
+        console.log("TCP_server.js/new Device - The device was not found in the database")
+
+        console.log("TCP_server.js/new Device - Object of new device" + d);
+
         // The device is added to the JSON object of connected devices with the key device_count
         devices[String(device_count)] = d;
+
+        console.log("TCP_server.js/new Device - List of connected devices:" + devices);
 
         // This is not needed the new id can just be an input to the funciton propertyChange
         // Thats how it should be. Like statechange in React
@@ -92,13 +113,13 @@ const server = net.createServer(conn => {
 
             // If the devices completed a handshake with the server
             
-            console.log("Device", id, ": Disconnected");
+            console.log("TCP_server.js/new Device - Device", id, ": Disconnected");
             delete devices[id];
 
         } else {
 
             // Would be nice to have a handshake id to identify the uncompleted handshake
-            console.log("A device disconnected before completing a handshake")
+            console.log("TCP_server.js/new Device - A device disconnected before completing a handshake")
         
         }
 
