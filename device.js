@@ -17,6 +17,15 @@ let deviceTypes = {
         ["userId", "string"],
         ["deviceName", "string"],
         ["state", "string"]
+    ],
+    "pot": [
+        ["deviceType", "string"],
+        ["deviceId", "string"],
+        ["userId", "string"],
+        ["deviceName", "string"],
+        ["ledState", "string"],
+        ["sensorValue", "string"],
+        ["pumpState", "string"],
     ]
 }
 
